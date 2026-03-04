@@ -160,6 +160,8 @@ src/
  ├── app.ts
  ├── server.ts
  ├── config/
+ ├── routes/
+ ├── controller/
  ├── database/
  ├── modules/
  │     ├── auth/
