@@ -34,3 +34,11 @@ export interface loginPlayLoad{
     password: string
 }
 
+export interface personalDetails {
+  user_id: string,
+  full_name?: string,
+  pes_game_name?: string,
+  team_name: string,
+  konami_id: string
+}
+

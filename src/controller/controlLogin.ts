@@ -46,7 +46,7 @@ export const LoginUser = async (req: Request, res: Response) => {
         const accessToken = jwt.sign(
               { userInfo: playLoad },
               process.env.SECRET_ACCESS_TOKEN as string,
-              { expiresIn: "15m" }
+              { expiresIn: "1d" }
             );
         
             const refreshToken = jwt.sign(

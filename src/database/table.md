@@ -49,12 +49,15 @@ CREATE TABLE users (
   email VARCHAR(120) UNIQUE NOT NULL,
   phone VARCHAR(20) UNIQUE,
 
-  password_hash TEXT NOT NULL,
+  password_hash TEXT , --since password will not be needed for google auth
   role role_enum DEFAULT 'USER',
 
   registration_status registration_status_enum DEFAULT 'NOT_STARTED',
   is_verified BOOLEAN DEFAULT FALSE,
   refresh_token TEXT,
+  verification_code VARCHAR(10),
+  auth_provider VARCHAR(50),
+  google_id VARCHAR(100) UNIQUE,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -79,8 +82,6 @@ CREATE TABLE registration_profiles (
   full_name VARCHAR(150),
   pes_game_name VARCHAR(100),
   team_name VARCHAR(100),
-  konami_id VARCHAR(100) UNIQUE,
-  vfoot_username VARCHAR(100) UNIQUE,
 
   -- STEP 3: Campus & Student Info
   county VARCHAR(100),
@@ -313,5 +314,16 @@ This schema supports:
 **Ready for:** ORM (Prisma, Drizzle, TypeORM) or raw SQL implementation
 
 ---
+###Added constraints
+```sql
+  ALTER TABLE kyc_submissions
+  ADD CONSTRAINT unique_user_kyc UNIQUE (user_id);
+
+  ALTER TABLE kyc_submissions
+  ADD CONSTRAINT unique_user_kyc UNIQUE (user_id);
+
+  ALTER TABLE kyc_submissions
+  ADD COLUMN rejection_reason TEXT;
+```
 
 End of Schema Specification.
