@@ -54,7 +54,7 @@ CREATE TABLE users (
 
   registration_status registration_status_enum DEFAULT 'NOT_STARTED',
   is_verified BOOLEAN DEFAULT FALSE,
-
+  refresh_token TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

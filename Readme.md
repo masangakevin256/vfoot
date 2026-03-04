@@ -173,7 +173,9 @@ src/
  │     └── invites/
  ├── middleware/
  ├── utils/
+ ├── schema/
  └── types/
+
 ```
 
 The system follows modular domain-based architecture.

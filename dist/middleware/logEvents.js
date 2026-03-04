@@ -7,8 +7,9 @@ exports.logger = exports.logEvents = void 0;
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const promises_1 = __importDefault(require("fs/promises"));
+const date_fns_1 = require("date-fns");
 const logEvents = async (message, fileName) => {
-    const dateTime = `${Date.now()}`;
+    const dateTime = (0, date_fns_1.format)(new Date(), "yyyyMMdd\tHH:mm:ss");
     const logItem = `${dateTime}: ${message}\n`;
     const logDir = path_1.default.join(__dirname, "..", "..", "logs");
     try {
@@ -24,7 +25,7 @@ const logEvents = async (message, fileName) => {
 exports.logEvents = logEvents;
 const logger = (req, res, next) => {
     (0, exports.logEvents)(`${req.method}\t${req.url}\t${req.headers.origin}`, "reqLog.log");
-    console.log(`${req.method}: ${req.path}: ${req.url}`);
+    console.log(`${req.method}: ${req.path}`);
     next();
 };
 exports.logger = logger;
