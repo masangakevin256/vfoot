@@ -15,11 +15,11 @@ const googleAuth = async (idToken) => {
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID
         });
-        const payload = ticket.getPayload();
-        if (!payload?.email || !payload.sub) {
+        const payloadRaw = ticket.getPayload();
+        if (!payloadRaw?.email || !payloadRaw.sub) {
             return { success: false, message: "Invalid Google payload" };
         }
-        const { email, name, sub: googleId } = payload;
+        const { email, name, sub: googleId } = payloadRaw;
         // Check if Google account already linked
         const googleUser = await connectDb_1.pool.query(`SELECT * FROM users WHERE google_id = $1`, [googleId]);
         let user;
@@ -47,14 +47,14 @@ const googleAuth = async (idToken) => {
             }
         }
         // Generate tokens 
-        const jwtPayload = {
+        const payload = {
             id: user.id,
             username: user.username,
             email: user.email,
             role: user.role
         };
-        const accessToken = jsonwebtoken_1.default.sign({ userInfo: jwtPayload }, process.env.SECRET_ACCESS_TOKEN, { expiresIn: "15m" });
-        const refreshToken = jsonwebtoken_1.default.sign({ userInfo: jwtPayload }, process.env.SECRET_REFRESH_TOKEN, { expiresIn: "7d" });
+        const accessToken = jsonwebtoken_1.default.sign({ userInfo: payload }, process.env.SECRET_ACCESS_TOKEN, { expiresIn: "15m" });
+        const refreshToken = jsonwebtoken_1.default.sign({ userInfo: payload }, process.env.SECRET_REFRESH_TOKEN, { expiresIn: "7d" });
         await connectDb_1.pool.query(`UPDATE users SET refresh_token = $1 WHERE id = $2`, [refreshToken, user.id]);
         return {
             success: true,
