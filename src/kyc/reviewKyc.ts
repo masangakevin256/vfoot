@@ -1,16 +1,25 @@
-import {pool} from "../database/connectDb";
+import { pool } from "../database/connectDb";
+import { z } from "zod";
 
 
-export const reviewKyc = async (input: {
-  user_id: string;
-  decision: "APPROVED" | "REJECTED";
-  rejection_reason?: string;
-}, adminId: string) => {
+export const reviewKyc = async (
+  input: { user_id: string; decision: "APPROVED" | "REJECTED"; rejection_reason?: string },
+  adminId: string
+) => {
+  // Use strict UUID validation
+  const parsed = z.object({
+    user_id: z.string().uuid("Invalid User ID format"),
+    decision: z.enum(["APPROVED", "REJECTED"]),
+    rejection_reason: z.string().optional()
+  }).safeParse(input);
 
-  const { user_id, decision, rejection_reason } = input;
+  if (!parsed.success) {
+    return { success: false, message: parsed.error.issues[0].message };
+  }
+
+  const { user_id, decision, rejection_reason } = parsed.data;
 
   try {
-
     // Check if KYC exists
     const kycCheck = await pool.query(
       `SELECT * FROM kyc_submissions WHERE user_id = $1`,
@@ -50,7 +59,6 @@ export const reviewKyc = async (input: {
     }
 
     return { success: true, message: `KYC ${decision}` };
-
   } catch (err: any) {
     return { success: false, message: err.message };
   }

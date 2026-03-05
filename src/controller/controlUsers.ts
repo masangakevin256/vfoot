@@ -8,7 +8,7 @@ import { googleAuth } from "../modules/googleAuth/auth";
 export const getAllUsers = async (req: Request, res: Response) => {
     try{
         const results = await pool.query <User>(
-            `SELECT * FROM users`
+            `SELECT id, username, email, phone, role, registration_status, is_verified, created_at, updated_at FROM users`
         );
         const users: User[] = results.rows;
         res.status(200).json({ success: true, data: users });
@@ -18,9 +18,9 @@ export const getAllUsers = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 }
-
+//for normal users
 export const registerController = async (req: Request, res: Response) => {
-  const result = await registerUser(req.body);
+  const result = await registerUser(req.body, false);
 
   if (!result.success) {
     return res.status(400).json(result);
@@ -41,6 +41,20 @@ export const registerController = async (req: Request, res: Response) => {
   });
 };
 
+//for admins
+export const registerAdminController = async (req: Request, res: Response) => {
+  const result = await registerUser(req.body, true); // 'true' = admin request
+
+  if (!result.success) {
+    return res.status(400).json(result);
+  }
+
+  return res.status(201).json({
+    success: true,
+    data: result.data,
+    accessToken: result.accessToken
+  });
+};
 export const googleAuthController = async (req: Request, res: Response) => {
   const { idToken } = req.body;
 

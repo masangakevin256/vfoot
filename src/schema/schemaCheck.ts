@@ -12,11 +12,13 @@ export const userSchema = z.object({
     "STEP_1_COMPLETED",
     "STEP_2_COMPLETED",
     "KYC_APPROVED",
+    "KYC_REJECTED",
     "STEP_3_COMPLETED",
     "PAYMENT_PENDING",
     "PAYMENT_CONFIRMED",
     "ACTIVE"
   ]).default("NOT_STARTED"),
+  secret_code: z.string().optional(),
   is_verified: z.boolean().default(false),
   created_at: z.date().default(() => new Date()),
   updated_at: z.date().default(() => new Date()),
@@ -29,7 +31,7 @@ export const step1SubmissionSchema =  z.object({
   pes_game_name: z.string().optional(),
   team_name: z.string(),
   konami_id: z.string(),
-  
+  konami_username: z.string().optional()
 })
 
 export const step2SubmissionSchema = z.object({
@@ -44,7 +46,7 @@ export const step2SubmissionSchema = z.object({
 
 export const step3SubmissionSchema = z.object({
   user_id: z.string().uuid(),
-  county: z.string().min(2),
+  county_code: z.number(),
   campus_id: z.string().uuid(),
   registration_number: z.string().min(3),
   year_of_study: z.number().int().min(1).max(10),

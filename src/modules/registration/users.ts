@@ -5,88 +5,99 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 
-export const registerUser = async (input: unknown) => {
+export const registerUser = async (input: any, isAdminRequest = false) => {
   const parsed = userSchema.pick({
     username: true,
     email: true,
     phone: true,
-    password: true
+    password: true,
+    role: true, // optional, only used for admin requests
+    secret_code: true // for admin verification
   }).safeParse(input);
 
-  if(!parsed.success){
-      const message = parsed.error.issues[0].message;
-      return { success: false, message };
+  if (!parsed.success) {
+    return { success: false, message: parsed.error.issues[0].message };
   }
 
-  const { username, email, phone, password } = parsed.data;
+  let { username, email, phone, password, role, secret_code } = parsed.data;
 
   try {
+    // Check if user exists
     const existingUser = await pool.query(
       `SELECT id FROM users WHERE email = $1 OR username = $2`,
       [email, username]
     );
 
     if (existingUser.rows.length > 0) {
-      return {
-        success: false,
-        message: "Email or username already exists"
-      };
+      return { success: false, message: "Email or username already exists" };
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // --------- ADMIN LOGIC ----------
+    let finalRole: "USER" | "ADMIN" | "SUPER_ADMIN" = "USER";
+
+    if (isAdminRequest) {
+      // Must provide the secret code
+      if (secret_code !== process.env.secretRegistrationNumber) {
+        return { success: false, message: "Invalid secret code for admin registration" };
+      }
+
+      if (!role || !["ADMIN", "SUPER_ADMIN"].includes(role)) {
+        return { success: false, message: "Invalid role for admin creation" };
+      }
+
+      // Check limits
+      if (role === "SUPER_ADMIN") {
+        const superAdminCheck = await pool.query(`SELECT id FROM users WHERE role='SUPER_ADMIN'`);
+        if (superAdminCheck.rows.length > 0) {
+          return { success: false, message: "SUPER_ADMIN already exists" };
+        }
+      }
+
+      if (role === "ADMIN") {
+        const adminCheck = await pool.query(`SELECT id FROM users WHERE role='ADMIN'`);
+        if (adminCheck.rows.length >= 5) {
+          return { success: false, message: "Maximum 5 ADMIN users allowed" };
+        }
+      }
+
+      finalRole = role;
+    }
+
+    // Insert user
     const results = await pool.query(
-      `INSERT INTO users (username, email, phone, password_hash)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (username, email, phone, password_hash, role, is_verified, registration_status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
        RETURNING id, username, email, role, registration_status`,
-      [username, email, phone, hashedPassword]
+      [username, email, phone, hashedPassword, finalRole, finalRole !== "USER", finalRole !== "USER" ? "ACTIVE" : "NOT_STARTED"]
     );
 
     const newUser = results.rows[0];
 
+    // JWT payload
     const payload: jwtPayload = {
       id: newUser.id,
       username: newUser.username,
       email: newUser.email,
-      role: newUser.role,
+      role: newUser.role
     };
 
-    const accessToken = jwt.sign(
-      { userInfo: payload },
-      process.env.SECRET_ACCESS_TOKEN as string,
-      { expiresIn: "15m" }
-    );
+    const accessToken = jwt.sign({ userInfo: payload }, process.env.SECRET_ACCESS_TOKEN!, { expiresIn: "15m" });
+    const refreshToken = jwt.sign({ userInfo: payload }, process.env.SECRET_REFRESH_TOKEN!, { expiresIn: "7d" });
 
-    const refreshToken = jwt.sign(
-      { userInfo: payload },
-      process.env.SECRET_REFRESH_TOKEN as string,
-      { expiresIn: "7d" }
-    );
-
-    await pool.query(
-      `UPDATE users SET refresh_token = $1 WHERE id = $2`,
-      [refreshToken, newUser.id]
-    );
+    await pool.query(`UPDATE users SET refresh_token=$1 WHERE id=$2`, [refreshToken, newUser.id]);
 
     return {
       success: true,
-      data: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        role: newUser.role,
-        registration_status: newUser.registration_status
-      },
+      data: newUser,
       accessToken,
       refreshToken
     };
-
   } catch (err: any) {
     console.error(err);
-    return {
-      success: false,
-      message: err?.message
-    };
+    return { success: false, message: err.message };
   }
 };
 
@@ -97,14 +108,15 @@ export const submitStep1 = async (input: unknown) => {
     team_name: true,
     konami_id: true,
     full_name: true,
-    pes_game_name: true
-  }).safeParse(input);
+    pes_game_name: true,
+    konami_username: true
+  }).safeParse(input); 
 
   if (!parsed.success) {
     return { success: false, message: parsed.error.issues[0].message };
   }
 
-  const { user_id, team_name, konami_id, full_name, pes_game_name } = parsed.data;
+  const { user_id, team_name, konami_id, full_name, pes_game_name, konami_username } = parsed.data;
 
   try {
     const userCheck = await pool.query(
@@ -116,18 +128,21 @@ export const submitStep1 = async (input: unknown) => {
       return { success: false, message: "User not found" };
     }
 
+    // console.log(userCheck.rows[0]);
+
     const result = await pool.query(
       `INSERT INTO registration_profiles 
-        (user_id, team_name, konami_id, full_name, pes_game_name)
-       VALUES ($1, $2, $3, $4, $5)
+        (user_id, team_name, konami_id, full_name, pes_game_name, konami_username)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (user_id)
        DO UPDATE SET
          team_name = EXCLUDED.team_name,
          konami_id = EXCLUDED.konami_id,
          full_name = EXCLUDED.full_name,
-         pes_game_name = EXCLUDED.pes_game_name
+         pes_game_name = EXCLUDED.pes_game_name,
+         konami_username = EXCLUDED.konami_username
        RETURNING *`,
-      [user_id, team_name, konami_id, full_name, pes_game_name]
+      [user_id, team_name, konami_id, full_name, pes_game_name, konami_username]
     );
 
     await pool.query(
@@ -149,6 +164,7 @@ export const submitStep2 = async (input: unknown) => {
     user_id: true,
     id_back_url: true,
     id_front_url: true,
+    selfie_url: true,
     nationality: true,
     date_of_birth: true,
     status: true,
@@ -158,11 +174,11 @@ export const submitStep2 = async (input: unknown) => {
     return { success: false, message: parsed.error.issues[0].message };
   }
 
-  const { user_id, id_back_url, id_front_url, nationality, date_of_birth, status } = parsed.data;
+  const { user_id, id_back_url, id_front_url, nationality, date_of_birth, status, selfie_url } = parsed.data;
 
   try {
     const userCheck = await pool.query(
-      `SELECT id FROM users WHERE id = $1`,
+      `SELECT id, registration_status  FROM users WHERE id = $1`,
       [user_id]
     );
 
@@ -176,17 +192,18 @@ export const submitStep2 = async (input: unknown) => {
 
     const result = await pool.query(
       `INSERT INTO kyc_submissions
-        (user_id, id_back_url, id_front_url, nationality, date_of_birth, status)
-       VALUES ($1, $2, $3, $4, $5, $6)
+        (user_id, id_back_url, id_front_url, selfie_url,nationality, date_of_birth, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (user_id)
        DO UPDATE SET
          id_back_url = EXCLUDED.id_back_url,
          id_front_url = EXCLUDED.id_front_url,
          nationality = EXCLUDED.nationality,
+         selfie_url = EXCLUDED.selfie_url,
          date_of_birth = EXCLUDED.date_of_birth,
          status = EXCLUDED.status
        RETURNING *`,
-      [user_id, id_back_url, id_front_url, nationality, date_of_birth, status]
+      [user_id, id_back_url, id_front_url, selfie_url,  nationality, date_of_birth, status]
     );
 
     await pool.query(
@@ -208,12 +225,15 @@ export const submitStep3 = async (input: unknown) => {
   const parsed = step3SubmissionSchema.safeParse(input);
 
   if (!parsed.success) {
-    return { success: false, message: parsed.error.issues[0].message };
+    return {
+      success: false,
+      message: parsed.error.issues[0].message
+    };
   }
 
   const {
     user_id,
-    county,
+    county_code,
     campus_id,
     registration_number,
     year_of_study,
@@ -222,23 +242,66 @@ export const submitStep3 = async (input: unknown) => {
     id_number
   } = parsed.data;
 
+  const client = await pool.connect();
+
   try {
-    const userCheck = await pool.query(
-      `SELECT registration_status FROM users WHERE id=$1`,
+    await client.query("BEGIN");
+
+    /* ------------------ CHECK USER ------------------ */
+
+    const userCheck = await client.query(
+      `SELECT id, registration_status FROM users WHERE id=$1`,
       [user_id]
     );
 
     if (userCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
       return { success: false, message: "User not found" };
     }
 
     if (userCheck.rows[0].registration_status !== "KYC_APPROVED") {
-      return { success: false, message: "KYC must be approved first" };
+      await client.query("ROLLBACK");
+      return { success: false, message: "KYC not approved yet" };
     }
 
-    const result = await pool.query(
+    /* ------------------ CHECK KYC ------------------ */
+
+    const kycCheck = await client.query(
+      `SELECT status FROM kyc_submissions WHERE user_id=$1`,
+      [user_id]
+    );
+
+    if (kycCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { success: false, message: "KYC not submitted" };
+    }
+
+    if (kycCheck.rows[0].status !== "APPROVED") {
+      await client.query("ROLLBACK");
+      return { success: false, message: "KYC not approved yet" };
+    }
+
+    /* ------------------ VALIDATE CAMPUS + COUNTY ------------------ */
+
+    const campusCheck = await client.query(
+      `SELECT id FROM campuses
+       WHERE id=$1 AND county_code=$2`,
+      [campus_id, county_code]
+    );
+
+    if (campusCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: "Campus does not belong to selected county"
+      };
+    }
+
+    /* ------------------ UPDATE PROFILE ------------------ */
+
+    const result = await client.query(
       `UPDATE registration_profiles
-       SET county=$1,
+       SET county_code=$1,
            campus_id=$2,
            registration_number=$3,
            year_of_study=$4,
@@ -249,7 +312,7 @@ export const submitStep3 = async (input: unknown) => {
        WHERE user_id=$8
        RETURNING *`,
       [
-        county,
+        county_code,
         campus_id,
         registration_number,
         year_of_study,
@@ -260,12 +323,22 @@ export const submitStep3 = async (input: unknown) => {
       ]
     );
 
-    await pool.query(
+    if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { success: false, message: "Registration profile not found" };
+    }
+
+    /* ------------------ UPDATE USER STEP ------------------ */
+
+    await client.query(
       `UPDATE users
-       SET registration_status='STEP_3_COMPLETED'
+       SET registration_status='STEP_3_COMPLETED',
+           updated_at=NOW()
        WHERE id=$1`,
       [user_id]
     );
+
+    await client.query("COMMIT");
 
     return {
       success: true,
@@ -273,7 +346,11 @@ export const submitStep3 = async (input: unknown) => {
     };
 
   } catch (err: any) {
+    await client.query("ROLLBACK");
     return { success: false, message: err.message };
+
+  } finally {
+    client.release();
   }
 };
 
