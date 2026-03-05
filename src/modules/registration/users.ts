@@ -1,4 +1,4 @@
-import { jwtPayload } from './../../types/types';
+import { JwtPayload } from './../../types/types';
 import { pool } from "../../database/connectDb";
 import { userSchema, step1SubmissionSchema, step2SubmissionSchema, step3SubmissionSchema } from "../../schema/schemaCheck";
 import bcrypt from "bcrypt";
@@ -77,7 +77,7 @@ export const registerUser = async (input: unknown, isAdminRequest = false) => {
     const newUser = results.rows[0];
 
     // JWT payload
-    const payload: jwtPayload = {
+    const payload: JwtPayload = {
       id: newUser.id,
       username: newUser.username,
       email: newUser.email,

@@ -11,27 +11,27 @@ export interface Person {
 }
 
 export interface User extends Person {
-  registration_status?: 
-    | "NOT_STARTED" //sign up local
-    | "STEP_1_COMPLETED"  //personal details
-    | "STEP_2_COMPLETED" //identity verification
-    | "STEP_3_COMPLETED"  //campus selection and student status
-    | "PAYMENT_PENDING" //wallet activation and payment
-    | "PAYMENT_CONFIRMED" 
-    | "ACTIVE"; //fully activate account
+  registration_status?:
+  | "NOT_STARTED" //sign up local
+  | "STEP_1_COMPLETED"  //personal details
+  | "STEP_2_COMPLETED" //identity verification
+  | "STEP_3_COMPLETED"  //campus selection and student status
+  | "PAYMENT_PENDING" //wallet activation and payment
+  | "PAYMENT_CONFIRMED"
+  | "ACTIVE"; //fully activate account
 }
 
-export interface jwtPayload {
-    id: string,
-    username: string,
-    email: string,
-    role: "USER" | "ADMIN" | "SUPER_ADMIN"
-  
+export interface JwtPayload {
+  id: string,
+  username: string,
+  email: string,
+  role: "USER" | "ADMIN" | "SUPER_ADMIN"
+
 }
 
-export interface loginPlayLoad{
-    email: string,
-    password: string
+export interface LoginPayload {
+  email: string,
+  password: string
 }
 
 export interface personalDetails {

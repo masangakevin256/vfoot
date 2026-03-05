@@ -1,32 +1,32 @@
-import {pool } from "../database/connectDb";
+import { pool } from "../database/connectDb";
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { jwtPayload, loginPlayLoad } from "../types/types";
+import { JwtPayload, LoginPayload } from "../types/types";
 import { success } from "zod";
 
 
 
 export const LoginUser = async (req: Request, res: Response) => {
-    const {email, password} = req.body as loginPlayLoad;
+    const { email, password } = req.body as LoginPayload;
 
-    if(!email || !password){
-        return res.status(400).json({success: false, message: "Email and password are required"});
+    if (!email || !password) {
+        return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
     try {
         const user = await pool.query(`SELECT * FROM users WHERE email = $1`, [email]);
 
-        if(user.rows.length === 0){
-            return res.status(401).json({success: false, message: "Invalid credentials"});
+        if (user.rows.length === 0) {
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
         const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
 
-        if(!validPassword){
-            return res.status(401).json({success: false, message: "Invalid credentials"});
+        if (!validPassword) {
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
-         //I will send an email for this part
+        //I will send an email for this part
         // if(user.rows[0].is_verified === false){
         //     return res.status(403).json({
         //         success: false,
@@ -34,9 +34,9 @@ export const LoginUser = async (req: Request, res: Response) => {
         //     })
         // }
 
-    
 
-        const playLoad : jwtPayload = {
+
+        const payload: JwtPayload = {
             id: user.rows[0].id,
             username: user.rows[0].username,
             email: user.rows[0].email,
@@ -44,16 +44,16 @@ export const LoginUser = async (req: Request, res: Response) => {
         }
 
         const accessToken = jwt.sign(
-              { userInfo: playLoad },
-              process.env.SECRET_ACCESS_TOKEN as string,
-              { expiresIn: "1d" }
-            );
-        
-            const refreshToken = jwt.sign(
-              { userInfo: playLoad },
-              process.env.SECRET_REFRESH_TOKEN as string,
-              { expiresIn: "7d" }
-            );
+            { userInfo: payload },
+            process.env.SECRET_ACCESS_TOKEN as string,
+            { expiresIn: "1d" }
+        );
+
+        const refreshToken = jwt.sign(
+            { userInfo: payload },
+            process.env.SECRET_REFRESH_TOKEN as string,
+            { expiresIn: "7d" }
+        );
 
         //update user refresh token in db
         await pool.query(
@@ -79,7 +79,7 @@ export const LoginUser = async (req: Request, res: Response) => {
         )
     } catch (error) {
         console.log(error);
-        return res.status(500).json({success: false, message: "Internal server error"});
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
-    
+
 }

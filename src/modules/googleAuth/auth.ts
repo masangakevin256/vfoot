@@ -1,6 +1,7 @@
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import { pool } from "../../database/connectDb";
+import { JwtPayload } from "../../types/types";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -13,13 +14,13 @@ export const googleAuth = async (idToken: string) => {
       audience: process.env.GOOGLE_CLIENT_ID
     });
 
-    const payload = ticket.getPayload();
+    const payloadRaw = ticket.getPayload();
 
-    if (!payload?.email || !payload.sub) {
+    if (!payloadRaw?.email || !payloadRaw.sub) {
       return { success: false, message: "Invalid Google payload" };
     }
 
-    const { email, name, sub: googleId } = payload;
+    const { email, name, sub: googleId } = payloadRaw;
 
     // Check if Google account already linked
     const googleUser = await pool.query(
@@ -66,7 +67,7 @@ export const googleAuth = async (idToken: string) => {
     }
 
     // Generate tokens 
-    const jwtPayload = {
+    const payload: JwtPayload = {
       id: user.id,
       username: user.username,
       email: user.email,
@@ -74,13 +75,13 @@ export const googleAuth = async (idToken: string) => {
     };
 
     const accessToken = jwt.sign(
-      { userInfo: jwtPayload },
+      { userInfo: payload },
       process.env.SECRET_ACCESS_TOKEN as string,
       { expiresIn: "15m" }
     );
 
     const refreshToken = jwt.sign(
-      { userInfo: jwtPayload },
+      { userInfo: payload },
       process.env.SECRET_REFRESH_TOKEN as string,
       { expiresIn: "7d" }
     );
