@@ -292,7 +292,7 @@ Consistency ensures frontend reliability.
 * JWT authentication
 * Role-based access control
 * Payment idempotency
-* Input validation (Zod/Joi)
+* Input validation (Zod)
 * Secure file storage
 * Database-level constraints
 
