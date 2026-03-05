@@ -34,7 +34,7 @@ const LoginUser = async (req, res) => {
             email: user.rows[0].email,
             role: user.rows[0].role
         };
-        const accessToken = jsonwebtoken_1.default.sign({ userInfo: playLoad }, process.env.SECRET_ACCESS_TOKEN, { expiresIn: "15m" });
+        const accessToken = jsonwebtoken_1.default.sign({ userInfo: playLoad }, process.env.SECRET_ACCESS_TOKEN, { expiresIn: "1d" });
         const refreshToken = jsonwebtoken_1.default.sign({ userInfo: playLoad }, process.env.SECRET_REFRESH_TOKEN, { expiresIn: "7d" });
         //update user refresh token in db
         await connectDb_1.pool.query(`UPDATE users SET refresh_token = $1 WHERE id = $2`, [refreshToken, user.rows[0].id]);

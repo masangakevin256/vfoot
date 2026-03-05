@@ -1,11 +1,12 @@
 import express from "express";
 import { verifyRoles } from "../middleware/verifyRoles";
 import { verifyJwt } from "../middleware/verifyJwt";
-import { 
+import {
     getAllUsers, googleAuthController, registerController, controlStepOne,
-    controlStepTwo, controlStepThree, controlTriggerPayment, controlConfirmPayment,
+    controlStepTwo, controlStepThree,
     registerAdminController
- } from "../controller/controlUsers";
+} from "../controller/controlUsers";
+import { controlTriggerPayment, controlConfirmPayment } from "../modules/wallet/mpesa";
 import { LoginUser } from "../controller/controlLogin";
 import { controlReviewKyc } from "../controller/controlReviewKyc";
 import { getAllCounties } from "../controller/controlCounties";
@@ -34,8 +35,8 @@ router.post('/users/trigger-payment', verifyRoles('USER'), controlTriggerPayment
 router.post('/users/confirm-payment', verifyRoles('USER'), controlConfirmPayment);
 
 //campuses and counties
-router.get("/counties", verifyRoles("SUPER_ADMIN","ADMIN", "USER"), getAllCounties);
-router.get("/campuses", verifyRoles("SUPER_ADMIN","ADMIN", "USER"), getCampuses);
+router.get("/counties", verifyRoles("SUPER_ADMIN", "ADMIN", "USER"), getAllCounties);
+router.get("/campuses", verifyRoles("SUPER_ADMIN", "ADMIN", "USER"), getCampuses);
 
 
 //review kyc
