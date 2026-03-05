@@ -35,4 +35,3 @@ app.all(/.*/, (req: Request, res: Response) => {
 
 
 
-//in local auth we used is_verified false and registration status to be not_started, but in google auth we used is_vrified to be true, and registration_status- active, why
