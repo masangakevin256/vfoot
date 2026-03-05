@@ -1,317 +1,136 @@
-# VFOOT Backend System
+#  VFOOT - Backend System
 
-State-Driven Registration • KYC Verification • Wallet Activation • MPESA Integration
+**The National University eFootball Ecosystem Center**
+
+State-Driven Registration • Tournament Management • Ranking System • MPESA Integration • KYC Verification
 
 ---
 
 ## 📌 Project Overview
 
-VFOOT Backend is a production-grade API system designed to power:
+** VFOOT** is a comprehensive national university eFootball ecosystem in Kenya. It is designed to foster a competitive gaming environment across **16 campuses**, culminating in the annual **National VFOOT Cup**.
 
-* Multi-step user registration
-* KYC identity verification
-* Wallet activation via MPESA
-* Competition eligibility control
-* Invitation-based onboarding
-* Registration window enforcement
+The backend serves as the core engine powering the entire ecosystem, managing multi-tier tournaments, real-time rankings, financial transactions, and fair-play enforcement.
 
-This system is built as a **state-driven onboarding engine**, not a simple authentication server.
-
----
-
-## 🏗 Tech Stack
-
-* **Runtime:** Node.js
-* **Language:** TypeScript
-* **Framework:** Express.js
-* **Database:** PostgreSQL
-* **Authentication:** JWT
-* **Password Security:** bcrypt
-* **Payments:** MPESA STK Push
-* **File Storage:** Cloud Storage ( Cloudinary / S3)
+### 🎯 Key Ecosystem Vision
+*   **National Reach:** Connecting 16 major university campuses.
+*   **Competitive Tiers:** Managing Campus Leagues (Year 1–4) and the elite Z-League.
+*   **National Pathway:** Qualification systems for the National VFOOT Cup.
+*   **Player Growth:** Comprehensive stats tracking and "Hall of Fame" recognition.
 
 ---
 
-## 🧠 Core System Philosophy
+## 🏗 Backend Tech Stack
 
-This backend is designed around:
-
-* Progressive registration steps
-* Strict backend validation
-* Hard state enforcement
-* Secure KYC handling
-* Idempotent payment confirmation
-* Resume-safe registration drafts
-
-The frontend cannot bypass business rules — all logic is enforced server-side.
+*   **Runtime:** Node.js
+*   **Language:** TypeScript
+*   **Framework:** Express.js
+*   **Database:** PostgreSQL (Relationally modeled for complex tournament & financial data)
+*   **Authentication & Services:** Firebase (Auth, RTDB, Storage, FCM)
+*   **Payments:** MPESA Daraja API (STK Push & Webhooks)
+*   **Logic:** State-driven onboarding and tournament state machines.
 
 ---
 
-## 🔄 Registration State Machine
+## 🏆 Tournament & League Architecture
 
-Each user progresses through controlled states:
+The system is designed to handle a complex hierarchy of competitive play:
+
+### 1. Campus Leagues
+*   **Divisional Structure:** Tiered leagues (Year 1, Year 2, Year 3, Year 4).
+*   **Z-League:** The premier campus division.
+*   **Promotion/Relegation:** Backend logic for end-of-season state transitions.
+
+### 2. Cup Competitions
+*   **Campus Main Cup:** Local campus-level knockout tournaments.
+*   **National VFOOT Cup:** The ultimate national championship involving qualified campus champions.
+
+### 3. VFOOT Hub
+*   **Friendlies:** Matchmaking and record-keeping for casual play.
+*   **Paid Matches:** Secure wagering and prize distribution logic.
+*   **Public/Private Leagues:** Community-driven competition management.
+
+---
+
+## � Ranking & Fair Play (CP & RP)
+
+The backend implements a sophisticated player evaluation system:
+
+*   **Ranked Points (RP):** Measures skill and competitive performance. 
+    *   Calculated based on match results, opponent strength, and tournament tier.
+    *   Directly affects leaderboard position and National Cup qualification.
+*   **Courtesy Points (CP):** Measures fair play, verification, and sportsmanship.
+    *   Integrated with the **Fair Play & Verification System**.
+    *   Deductions for toxic behavior, disqualifications, or unverified match reports.
+    *   Required minimum thresholds for tournament eligibility.
+
+---
+
+## 💳 Wallet & MPESA Ecosystem
+
+A secure, idempotent financial layer:
+
+*   **MPESA STK Push:** Direct in-app wallet funding.
+*   **Webhook Verification:** Only server-to-server confirmations trigger wallet updates.
+*   **Transactional Integrity:** PostgreSQL-backed ACID transactions for all monetary flows (prizes, entry fees, withdrawals).
+*   **Wallet States:** `PENDING_ACTIVATION`, `ACTIVE`, `FROZEN`.
+
+---
+
+## 🗄 Database Schema (PostgreSQL)
+
+The system utilizes a fully normalized relational schema:
+
+*   **Users:** Identity, Auth metadata, and registration state.
+*   **Tournaments:** Settings, brackets, schedules, and prize pools.
+*   **Matches:** Results, stats, and verification logs.
+*   **Rankings:** Historical RP/CP snapshots per player.
+*   **Wallets & Payments:** Ledger-based transaction history.
+*   **Campuses:** Hierarchical organization of the 16 campuses.
+*   **KYC Submissions:** Secure identity verification records.
+
+---
+
+## 📡 Core Backend Modules
 
 ```
-NOT_STARTED
-STEP_1_COMPLETED
-STEP_2_COMPLETED
-KYC_APPROVED
-STEP_3_COMPLETED
-PAYMENT_PENDING
-PAYMENT_CONFIRMED
-ACTIVE
-```
-
-All protected routes validate the user’s `registration_status` before execution.
-
----
-
-## 🗄 Database Architecture
-
-### Core Tables
-
-* `users` – Authentication + registration state
-* `registration_profiles` – Personal + campus details
-* `registration_drafts` – Autosave per step
-* `kyc_submissions` – Identity verification records
-* `wallets` – User wallet tracking
-* `payments` – MPESA transaction logs
-* `invitation_codes` – Invite tracking
-* `counties` – Location normalization
-* `campuses` – Campus listing
-* `system_settings` – Registration control
-
-The schema is fully normalized and production-ready.
-
----
-
-## 🔐 Authentication & Authorization
-
-### Authentication
-
-* JWT-based authentication
-* Access tokens required for protected routes
-* Passwords hashed using bcrypt
-
-### Authorization Roles
-
-* `USER`
-* `ADMIN`
-* `SUPER_ADMIN`
-
-Admin-level routes are role-protected.
-
----
-
-## 💳 MPESA Payment Flow
-
-1. User submits phone number.
-2. Backend triggers STK Push.
-3. Payment is saved as `PENDING`.
-4. MPESA sends webhook callback.
-5. Backend verifies receipt.
-6. Payment updated to `SUCCESS`.
-7. Wallet activated.
-8. Registration status updated.
-
-### Important:
-
-* Frontend confirmation is ignored.
-* Only webhook confirmation activates wallet.
-* Payment processing uses database transactions.
-
----
-
-## 🪪 KYC Workflow
-
-* User uploads ID front/back and selfie.
-* Submission stored in `kyc_submissions`.
-* Status defaults to `PENDING`.
-* Admin reviews and updates to:
-
-  * `APPROVED`
-  * `REJECTED`
-
-KYC approval may be required before competition eligibility.
-
----
-
-## 📡 API Modules
-
-```
-/auth
-/registration
-/kyc
-/wallet
-/payments
-/campus
-/invites
-/admin
-/system
-```
-
-All routes follow consistent response format.
-
----
-
-## 📦 Project Structure
-
-```
-src/
- ├── app.ts
- ├── server.ts
- ├── config/
- ├── routes/
- ├── controller/
- ├── database/
- ├── modules/
- │     ├── auth/
- │     ├── registration/
- │     ├── kyc/
- │     ├── wallet/
- │     ├── payments/
- │     ├── campus/
- │     └── invites/
- ├── middleware/
- ├── utils/
- ├── schema/
- └── types/
-
-```
-
-The system follows modular domain-based architecture.
-
----
-
-## 🚀 Development Setup
-
-### 1️⃣ Install Dependencies
-
-```bash
-pnpm install
-```
-
-### 2️⃣ Environment Variables
-
-Create a `.env` file:
-
-```
-PORT=5000
-DATABASE_URL=
-JWT_SECRET=
-MPESA_CONSUMER_KEY=
-MPESA_CONSUMER_SECRET=
-MPESA_SHORTCODE=
-MPESA_PASSKEY=
-MPESA_CALLBACK_URL=
-CLOUD_STORAGE_KEY=
-NODE_ENV=development
-```
-
-### 3️⃣ Run Development Server
-
-```bash
-pnpm dev
+/auth          - Firebase integration & JWT management
+/tournaments   - Configuration, brackets, and match scheduling
+/leagues       - Table standings, promotion/relegation logic
+/hub           - Matchmaking and informal competition API
+/ranking       - RP/CP calculation and leaderboard generation
+/stats         - Player performance metrics and Hall of Fame
+/wallet        - Financial ledger and balance management
+/payments      - MPESA Daraja API webhooks and initiations
+/kyc           - Identity verification workflow
+/notifications - FCM push notifications for match alerts
 ```
 
 ---
 
-## 🏭 Production Deployment
+## 🚀 Development & Deployment
 
-### Build
+### Setup
+1. `pnpm install`
+2. Configure `.env` with `DATABASE_URL` (PostgreSQL), Firebase credentials, and MPESA API keys.
+3. `pnpm dev`
 
-```bash
-pnpm build
-```
-
-### Start
-
-```bash
-pnpm start
-```
-
-### Requirements
-
-* HTTPS enabled
-* Public webhook URL
-* Production PostgreSQL database
-* Secure environment variable storage
+### Production
+*   **Deployment:** Node.js environment with HTTPS.
+*   **Database:** Managed PostgreSQL.
+*   **Monitoring:** Health checks for MPESA webhooks and Firebase service status.
 
 ---
 
-## ⚠️ Critical Engineering Considerations
-
-* Unique constraints prevent duplicate accounts
-* Transactions protect payment updates
-* File uploads validated by type and size
-* Rate limiting applied to auth routes
-* Webhook signature verification required
-* Registration window enforced via system settings
+## 🛡 Security & Verification
+*   **Multi-step KYC:** ID and selfie verification required for professional tiers.
+*   **Match Verification:** Dispute resolution logic for match results.
+*   **Role-Based Access (RBAC):** Admin panel permissions (Tournament Director, Financial Auditor, KYC Reviewer).
 
 ---
 
-## 📊 Admin Capabilities (Backend Ready)
-
-* Approve/reject KYC submissions
-* Track payments
-* Monitor registration progress
-* Manage invitation codes
-* Open/close registration window
+## ‍💻 Backend Development
+Maintained as a robust, scalable Node.js API focused on performance, security, and the integrity of the national eFootball ecosystem.
 
 ---
-
-## 🧪 Error Response Standard
-
-All errors follow:
-
-```json
-{
-  "success": false,
-  "message": "Error description",
-  "code": "ERROR_CODE"
-}
-```
-
-Consistency ensures frontend reliability.
-
----
-
-## 📈 Scalability Design
-
-* Indexed critical columns
-* Stateless JWT auth
-* Modular route separation
-* Config-driven registration window
-* Extendable wallet architecture
-
----
-
-## 🛡 Security Highlights
-
-* Password hashing (bcrypt)
-* JWT authentication
-* Role-based access control
-* Payment idempotency
-* Input validation (Zod)
-* Secure file storage
-* Database-level constraints
-
----
-
-## 📌 System Status
-
-✔ Production-ready architecture
-✔ MPESA-compatible
-✔ Secure onboarding pipeline
-✔ Competition eligibility controlled
-✔ Admin moderation ready
-
----
-
-## 👨‍💻 Maintainer
-
-Backend developed using Node.js, TypeScript, Express, and PostgreSQL.
-
----
-
-End of Documentation.
+© 2026 VFOOT. End of documentation.
