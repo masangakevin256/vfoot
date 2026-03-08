@@ -67,7 +67,7 @@ export const mpesaStkPayload = z.object({
       PhoneNumber: z.string().min(10),                     
       CallBackURL: z.string(),            
       AccountReference: z.string(),          
-      // TransactionDesc: z.string(),                 
+      TransactionDesc: z.string(),                 
     
 
 })
@@ -78,3 +78,14 @@ export const mpesaPaymentTriggerSchema = z.object({
   phone: z.string().min(10)
 })
 
+export const tournamentSchema = z.object({
+  title: z.string(),
+  type: z.enum(["campus", "national"]),
+  campus_id: z.string().uuid().optional(),
+  year: z.number().int().min(2000).max(2100),
+  status: z.enum(["upcoming", "ongoing", "completed"]),
+  match_type: z.string(),
+  group_size: z.number().int().min(2).max(10),
+  knockout_stages: z.boolean(),
+  rules: z.object({}).optional()
+})

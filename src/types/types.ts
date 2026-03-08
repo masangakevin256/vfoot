@@ -1,3 +1,4 @@
+import { league } from './types';
 export interface Person {
   id?: string;
   username: string;
@@ -42,3 +43,20 @@ export interface personalDetails {
   konami_id: string
 }
 
+export interface tournament {
+  title: string,
+  type: 'campus' | 'national',
+  campus_id: string,
+  year: number,
+  status: string,
+  match_type: string,
+  group_size: number,
+  knockout_stages: boolean,
+  rules: object
+}
+
+export interface league {
+  name: 'year 1' |'year 2' | 'year 3' | 'year 4' | 'z league',
+  tournament_id: string,
+  
+}

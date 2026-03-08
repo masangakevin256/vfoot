@@ -70,14 +70,16 @@ export const mpesaCallback = async (req: Request, res: Response) => {
       [mpesaReceipt, checkoutRequestId]
     );
 
-    await pool.query(`
-        UPDATE wallets
-        SET is_activated = true
-        WHERE user_id = (
-          SELECT user_id FROM payments
-          WHERE checkout_request_id=$1
-        )
-    `, [checkoutRequestId]);
+    await pool.query(
+      `
+      INSERT INTO wallets (user_id, is_activated)
+      VALUES (
+        (SELECT user_id FROM payments WHERE checkout_request_id=$1),
+        true
+      )
+      `,
+      [checkoutRequestId]
+    )
 
     await pool.query(`
         UPDATE users

@@ -233,11 +233,59 @@ CREATE TABLE system_settings (
   registration_deadline TIMESTAMP,
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
 ```
 
 **Purpose:** Registration window control.
 
 ---
+
+```sql
+CREATE TABLE tournaments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL,         -- e.g. 'Campus', 'National'
+    campus_id UUID REFERENCES campuses(id),  -- optional, only for campus-level tournaments
+    year INT NOT NULL,
+    status VARCHAR(50) NOT NULL,       -- e.g. 'upcoming', 'ongoing', 'completed'
+    match_type VARCHAR(20) DEFAULT '1v1',
+    group_size INT DEFAULT 4,          -- number of players per group
+    knockout_stages BOOLEAN DEFAULT TRUE,
+    rules JSONB,                       -- flexible rules storage
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+```
+
+```sql
+CREATE TABLE fixtures (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    home_player UUID REFERENCES users(id) NOT NULL,   
+    away_player UUID REFERENCES users(id) NOT NULL,   
+    scheduled_at TIMESTAMP NOT NULL,
+    venue VARCHAR(100) DEFAULT 'Online',
+    status VARCHAR(50) DEFAULT 'scheduled',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+```
+
+```sql
+CREATE TABLE leagues (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,              -- e.g. "Year 1 League", "Z-League"
+    category VARCHAR(50) NOT NULL,           -- e.g. "Student", "Community"
+    status VARCHAR(50) DEFAULT 'ongoing',    -- e.g. 'upcoming', 'ongoing', 'completed'
+    total_players INT DEFAULT 0,             -- number of players in this league
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+```
 
 ## 12. INDEXES (Performance Optimization)
 

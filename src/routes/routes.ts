@@ -11,6 +11,7 @@ import { LoginUser } from "../controller/controlLogin";
 import { controlReviewKyc } from "../controller/controlReviewKyc";
 import { getAllCounties } from "../controller/controlCounties";
 import { getCampuses } from "../controller/controlCampuses";
+import { controlCreateTournament, controlGetAllTournaments, controlGetTournamentById, controlUpdateTournament, controlDeleteTournament } from "../controller/controlTournament";
 
 export const router = express.Router();
 
@@ -44,3 +45,10 @@ router.post('/kyc/review', verifyRoles("ADMIN", "SUPER_ADMIN"), controlReviewKyc
 
 //mpesa
 router.post('/stkpush', verifyRoles('SUPER_ADMIN', 'ADMIN', 'USER'), triggerStkPush);
+
+//tournaments
+router.post('/tournaments', verifyRoles('SUPER_ADMIN', 'ADMIN'), controlCreateTournament);
+router.get('/tournaments', verifyRoles('SUPER_ADMIN', 'ADMIN'), controlGetAllTournaments);
+router.get('/tournaments/:id', verifyRoles('SUPER_ADMIN', 'ADMIN'), controlGetTournamentById);
+router.put('/tournaments/:id', verifyRoles('SUPER_ADMIN', 'ADMIN'), controlUpdateTournament);
+router.delete('/tournaments/:id', verifyRoles('SUPER_ADMIN', 'ADMIN'), controlDeleteTournament);
