@@ -1,16 +1,34 @@
+import moment from "moment"
+import axios from "axios"
 import { pool } from "../../database/connectDb";
-import { paymentTriggerSchema, paymentConfirmationSchema } from "../../schema/schemaCheck";
-//will be integrated later 
-export const triggerPayment = async (input: unknown) => {
-  const parsed = paymentTriggerSchema.safeParse(input);
+import { mpesaPaymentTriggerSchema, mpesaStkPayload } from "../../schema/schemaCheck";
+import { formatZodError } from "../../utils/formatZodError";
+
+const formatPhoneNumber = (phone: string): string => {
+  let formatted = phone.replace(/[^0-9]/g, "");
+  if (formatted.length < 9) return formatted;
+  if (formatted.startsWith("254") && formatted.length === 12) return formatted;
+  if (formatted.startsWith("0")) formatted = "254" + formatted.substring(1);
+  if (formatted.length === 9) formatted = "254" + formatted;
+  return formatted;
+};
+
+export const initiateStkPush = async (input: unknown) => {
+  const parsed = mpesaPaymentTriggerSchema.safeParse(input);
 
   if (!parsed.success) {
-    return { success: false, message: parsed.error.issues[0].message };
+    return {
+      success: false,
+      message: formatZodError(parsed.error)
+    };
   }
 
-  const { user_id, amount, phone } = parsed.data;
-
   try {
+    const { user_id } = parsed.data;
+    const amount = Math.floor(parsed.data.amount); // Ensure integer
+    const phone = formatPhoneNumber(parsed.data.phone);
+    const accessToken = await getAccessToken();
+
     const userCheck = await pool.query(
       `SELECT registration_status FROM users WHERE id=$1`,
       [user_id]
@@ -20,79 +38,104 @@ export const triggerPayment = async (input: unknown) => {
       return { success: false, message: "User not found" };
     }
 
-    if (userCheck.rows[0].registration_status !== "STEP_3_COMPLETED") {
-      return { success: false, message: "Complete Step 3 first" };
+    if (userCheck.rows[0].registration_status !== "STEP_3_COMPLETED" && userCheck.rows[0].registration_status !== "PAYMENT_PENDING") {
+      return { success: false, message: "Complete Step 3 first or payment is already pending" };
     }
 
-    const payment = await pool.query(
-      `INSERT INTO payments (user_id, amount, phone, status)
-       VALUES ($1,$2,$3,'PENDING')
-       RETURNING id, status`,
-      [user_id, amount, phone]
-    );
+    const url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
+    const auth = "Bearer " + accessToken;
+    const timestamp = moment().format("YYYYMMDDHHmmss");
 
-    await pool.query(
-      `UPDATE users
-       SET registration_status='PAYMENT_PENDING'
-       WHERE id=$1`,
-      [user_id]
-    );
+    const shortCode = (process.env.MPESA_SHORT_CODE || "").trim();
+    const passKey = (process.env.MPESA_PASS_kEY || "").trim();
 
-    return {
-      success: true,
-      data: payment.rows[0]
-    };
+    // Generate base64 encoded password
+    const password = Buffer.from(shortCode + passKey + timestamp).toString("base64");
 
+    const payload = {
+      BusinessShortCode: shortCode,
+      Password: password,
+      Timestamp: timestamp,
+      TransactionType: "CustomerPayBillOnline",
+      Amount: amount,
+      PartyA: phone,
+      PartyB: shortCode,
+      PhoneNumber: phone,
+      CallBackURL: (process.env.NGROK_URL || "").trim() + "/api/v1/mpesa/callback",
+      AccountReference: "VFOOT",
+      TransactionDesc: "Payment"
+    }
+    console.log(process.env.NGROK_URL);
+
+    const result = mpesaStkPayload.safeParse(payload);
+
+    if (!result.success) {
+      console.error("STK Payload Validation Error:", result.error.format());
+      return { success: false, message: "Internal payload validation error", data: result.error.format() };
+    }
+
+    try {
+      const response = await axios.post(url, payload, {
+        headers: { 
+          Authorization: auth,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        },
+        timeout: 20000
+      });
+
+      console.log("STK Push response received. Status:", response.status);
+      console.log("Response Body:", response.data);
+
+      if (response.status === 200) {
+        await pool.query(
+          `INSERT INTO payments (user_id, amount, phone, status, checkout_request_id, merchant_request_id)
+               VALUES ($1,$2,$3,'PENDING',$4,$5)
+               RETURNING id, status`,
+          [user_id, amount, phone, response.data.CheckoutRequestID, response.data.MerchantRequestID]
+        );
+        await pool.query(
+          `UPDATE users
+               SET registration_status='PAYMENT_PENDING'
+               WHERE id=$1`,
+          [user_id]
+        );
+        return { success: true, data: response.data };
+      } else {
+        const errorMessage = response.data?.errorMessage || response.data?.ResponseDescription || "Safaricom API Error";
+        return { success: false, message: errorMessage, data: response.data };
+      }
+    } catch (error: any) {
+      console.error("STK Push Request Error:", error.response?.data || error.message);
+      const errorMessage = error.response?.data?.errorMessage || error.response?.data || error.message;
+      return { success: false, message: "Safaricom API Error", data: errorMessage };
+    }
   } catch (err: any) {
-    return { success: false, message: err.message };
+    console.error("initiateStkPush error:", err);
+    return { success: false, message: err?.message || "Internal server error" };
   }
 };
 
-export const confirmPayment = async (input: unknown) => {
-  const parsed = paymentConfirmationSchema.safeParse(input);
-
-  if (!parsed.success) {
-    return { success: false, message: parsed.error.issues[0].message };
-  }
-
-  const { user_id, payment_id } = parsed.data;
+async function getAccessToken() {
+  const url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+  const auth = Buffer.from(`${process.env.MPESA_CONSUMER_KEY}:${process.env.MPESA_SECRET_KEY}`).toString("base64");
 
   try {
-    const paymentCheck = await pool.query(
-      `SELECT status FROM payments WHERE id=$1 AND user_id=$2`,
-      [payment_id, user_id]
-    );
+    const response = await axios.get(url, {
+      headers: { Authorization: "Basic " + auth }
+    });
 
-    if (paymentCheck.rows.length === 0) {
-      return { success: false, message: "Payment not found" };
+    if (response.data && response.data.access_token) {
+      return response.data.access_token;
+    } else {
+      throw new Error("Access token not found in response");
     }
-
-    if (paymentCheck.rows[0].status === "SUCCESS") {
-      return { success: false, message: "Payment already confirmed" };
-    }
-
-    await pool.query(
-      `UPDATE payments
-       SET status='SUCCESS',
-           updated_at=NOW()
-       WHERE id=$1 AND user_id=$2`,
-      [payment_id, user_id]
-    );
-
-    await pool.query(
-      `UPDATE users
-       SET registration_status='ACTIVE',
-           updated_at=NOW()
-       WHERE id=$1`,
-      [user_id]
-    );
-
-    return {
-      success: true,
-      message: "Payment confirmed and user activated"
-    };
-
-  } catch (err: any) {
-    return { success: false, message: err.message };
+  } catch (error: any) {
+    console.error("Failed to get Safaricom access token:", error.response?.data || error.message);
+    throw new Error(`Invalid response from Safaricom API: ${JSON.stringify(error.response?.data || error.message)}`);
   }
-};
+}
+
+
+

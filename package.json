@@ -20,10 +20,12 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.3.3",
     "@types/pg": "^8.18.0",
+    "@types/request": "^2.48.13",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -32,7 +34,9 @@
     "express": "^5.2.1",
     "google-auth-library": "^10.6.1",
     "jsonwebtoken": "^9.0.3",
+    "moment": "^2.30.1",
     "pg": "^8.19.0",
+    "request": "^2.88.2",
     "zod": "^4.3.6"
   }
 }

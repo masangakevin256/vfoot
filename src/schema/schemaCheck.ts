@@ -55,13 +55,26 @@ export const step3SubmissionSchema = z.object({
   id_number: z.string().min(5)
 });
 
-export const paymentTriggerSchema = z.object({
+export const mpesaStkPayload = z.object({
+ 
+      BusinessShortCode: z.string().min(4),            
+      Password: z.string().min(4),
+      Timestamp: z.string(),
+      TransactionType: z.string(),        
+      Amount: z.number().int().min(1),
+      PartyA: z.string().min(10),                          
+      PartyB: z.string().min(3),             
+      PhoneNumber: z.string().min(10),                     
+      CallBackURL: z.string(),            
+      AccountReference: z.string(),          
+      // TransactionDesc: z.string(),                 
+    
+
+})
+
+export const mpesaPaymentTriggerSchema = z.object({
   user_id: z.string().uuid(),
   amount: z.number().positive(),
   phone: z.string().min(10)
-});
+})
 
-export const paymentConfirmationSchema = z.object({
-  user_id: z.string().uuid(),
-  payment_id: z.string().uuid()
-});

@@ -1,5 +1,6 @@
 import { pool } from "../database/connectDb";
 import { z } from "zod";
+import { formatZodError } from "../utils/formatZodError";
 
 
 export const reviewKyc = async (
@@ -14,7 +15,7 @@ export const reviewKyc = async (
   }).safeParse(input);
 
   if (!parsed.success) {
-    return { success: false, message: parsed.error.issues[0].message };
+    return { success: false, message: formatZodError(parsed.error) };
   }
 
   const { user_id, decision, rejection_reason } = parsed.data;

@@ -1,6 +1,7 @@
 import { JwtPayload } from './../../types/types';
 import { pool } from "../../database/connectDb";
 import { userSchema, step1SubmissionSchema, step2SubmissionSchema, step3SubmissionSchema } from "../../schema/schemaCheck";
+import { formatZodError } from "../../utils/formatZodError";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -16,7 +17,7 @@ export const registerUser = async (input: unknown, isAdminRequest = false) => {
   }).safeParse(input);
 
   if (!parsed.success) {
-    return { success: false, message: parsed.error.issues[0].message };
+    return { success: false, message: formatZodError(parsed.error) };
   }
 
   let { username, email, phone, password, role, secret_code } = parsed.data;
@@ -24,12 +25,12 @@ export const registerUser = async (input: unknown, isAdminRequest = false) => {
   try {
     // Check if user exists
     const existingUser = await pool.query(
-      `SELECT id FROM users WHERE email = $1 OR username = $2`,
-      [email, username]
+      `SELECT id FROM users WHERE email = $1 OR username = $2 OR phone = $3`,
+      [email, username, phone]
     );
 
     if (existingUser.rows.length > 0) {
-      return { success: false, message: "Email or username already exists" };
+      return { success: false, message: "Email or username or phone already exists" };
     }
 
     // Hash password
@@ -110,10 +111,10 @@ export const submitStep1 = async (input: unknown) => {
     full_name: true,
     pes_game_name: true,
     konami_username: true
-  }).safeParse(input); 
+  }).safeParse(input);
 
   if (!parsed.success) {
-    return { success: false, message: parsed.error.issues[0].message };
+    return { success: false, message: formatZodError(parsed.error) };
   }
 
   const { user_id, team_name, konami_id, full_name, pes_game_name, konami_username } = parsed.data;
@@ -171,7 +172,7 @@ export const submitStep2 = async (input: unknown) => {
   }).safeParse(input);
 
   if (!parsed.success) {
-    return { success: false, message: parsed.error.issues[0].message };
+    return { success: false, message: formatZodError(parsed.error) };
   }
 
   const { user_id, id_back_url, id_front_url, nationality, date_of_birth, status, selfie_url } = parsed.data;
@@ -186,7 +187,7 @@ export const submitStep2 = async (input: unknown) => {
       return { success: false, message: "User not found" };
     }
     //check if step one is complete
-    if(userCheck.rows[0].registration_status !== "STEP_1_COMPLETED"){
+    if (userCheck.rows[0].registration_status !== "STEP_1_COMPLETED") {
       return { success: false, message: "Step 1 is not completed" };
     }
 
@@ -203,7 +204,7 @@ export const submitStep2 = async (input: unknown) => {
          date_of_birth = EXCLUDED.date_of_birth,
          status = EXCLUDED.status
        RETURNING *`,
-      [user_id, id_back_url, id_front_url, selfie_url,  nationality, date_of_birth, status]
+      [user_id, id_back_url, id_front_url, selfie_url, nationality, date_of_birth, status]
     );
 
     await pool.query(
@@ -227,7 +228,7 @@ export const submitStep3 = async (input: unknown) => {
   if (!parsed.success) {
     return {
       success: false,
-      message: parsed.error.issues[0].message
+      message: formatZodError(parsed.error)
     };
   }
 
