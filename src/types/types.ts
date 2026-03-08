@@ -1,4 +1,3 @@
-import { league } from './types';
 export interface Person {
   id?: string;
   username: string;
