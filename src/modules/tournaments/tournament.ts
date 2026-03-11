@@ -6,13 +6,13 @@ import { formatZodError } from "../../utils/formatZodError";
 export const createTournament = async (input: tournament) => {
     const parsedInput = tournamentSchema.safeParse(input);
 
-   //check if input is correct
-   if(!parsedInput.success){
-    return{
-        success: false,
-        message: formatZodError(parsedInput.error)
+    //check if input is correct
+    if (!parsedInput.success) {
+        return {
+            success: false,
+            message: formatZodError(parsedInput.error)
+        }
     }
-   }
     const { title, type, campus_id, year, status, match_type, group_size, knockout_stages, rules } = parsedInput.data;
 
     //check if tournament already exists
@@ -67,13 +67,13 @@ export const getTournamentById = async (id: unknown) => {
     return result.rows[0];
 }
 
-export const updateTournament = async (id: unknown, input: tournament ) => {
+export const updateTournament = async (id: unknown, input: tournament) => {
     const { title, type, campus_id, year, status, match_type, group_size, knockout_stages, rules } = input;
     //check if input is correct
     const parsedInput = tournamentSchema.partial().safeParse(input);
-    
-    if(!parsedInput.success){
-        return{
+
+    if (!parsedInput.success) {
+        return {
             success: false,
             message: formatZodError(parsedInput.error)
         }
@@ -98,7 +98,7 @@ export const updateTournament = async (id: unknown, input: tournament ) => {
     }
     if (campus_id && campus_id.trim() !== "") {
 
-        if(type === "national"){
+        if (type === "national") {
             throw new Error("Campus ID is not required for national tournaments");
         }
         //check if campus exists
@@ -143,6 +143,9 @@ export const updateTournament = async (id: unknown, input: tournament ) => {
         fields.push(`rules = $${index}`);
         values.push(rules);
         index++;
+    }
+    if (fields.length === 0) {
+        throw new Error("No fields provided for update");
     }
     values.push(id);
     const query = `

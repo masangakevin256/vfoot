@@ -78,14 +78,51 @@ export const mpesaPaymentTriggerSchema = z.object({
   phone: z.string().min(10)
 })
 
+//optional for update
 export const tournamentSchema = z.object({
-  title: z.string(),
-  type: z.enum(["campus", "national"]),
+  title: z.string().optional(),
+  type: z.enum(["campus", "national"]).optional(),
   campus_id: z.string().uuid().optional(),
-  year: z.number().int().min(2000).max(2100),
-  status: z.enum(["upcoming", "ongoing", "completed"]),
-  match_type: z.string(),
-  group_size: z.number().int().min(2).max(10),
-  knockout_stages: z.boolean(),
+  year: z.number().int().min(2000).max(2100).optional(),
+  status: z.enum(["upcoming", "ongoing", "completed"]).optional(),
+  match_type: z.string().optional(),
+  group_size: z.number().int().min(2).max(10).optional(),
+  knockout_stages: z.boolean().optional(),
   rules: z.object({}).optional()
+})
+
+//optional for update
+export const leaguesSchema = z.object({
+  id: z.string().uuid().optional(),
+  title: z.string().optional(),
+  campus_id: z.string().uuid().optional(),
+  category: z.enum(["year 1", "year 2", "year 3", "year 4", "z league"]).optional(),
+  season: z.number().int().positive().optional(),
+  year: z.number().int().min(2000).max(2100).optional(),
+  status: z.enum(["REGISTRATION_OPEN", "REGISTRATION_CLOSED", "PLAY_OFF", "FINAL"]).optional(),
+  max_players: z.number().int().positive().optional(),
+  start_date: z.string().refine(val => !isNaN(Date.parse(val)), {
+    message: "Invalid date format"
+  }).transform(val => new Date(val)).optional(),
+  end_date: z.string().refine(val => !isNaN(Date.parse(val)), {
+    message: "Invalid date format"
+  }).transform(val => new Date(val)).optional(),
+  created_at: z.date().optional(),
+  updated_at: z.date().optional()
+})
+
+export const leaguePlayersSchema = z.object({
+  id: z.string().uuid().optional(),
+  league_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  matches_played: z.number().int().min(0),
+  wins: z.number().int().min(0),
+  draws: z.number().int().min(0),
+  losses: z.number().int().min(0),
+  goals_for: z.number().int().min(0),
+  goals_against: z.number().int().min(0),
+  points: z.number().int().min(0),
+  joined_at: z.date(),
+  created_at: z.date().optional(),
+  updated_at: z.date().optional()
 })

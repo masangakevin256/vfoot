@@ -2,18 +2,19 @@ import { JwtPayload } from './../../types/types';
 import { pool } from "../../database/connectDb";
 import { userSchema, step1SubmissionSchema, step2SubmissionSchema, step3SubmissionSchema } from "../../schema/schemaCheck";
 import { formatZodError } from "../../utils/formatZodError";
+import { User } from './../../types/types';
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 
-export const registerUser = async (input: unknown, isAdminRequest = false) => {
+export const registerUser = async (input: User, isAdminRequest = false) => {
   const parsed = userSchema.pick({
     username: true,
     email: true,
     phone: true,
     password: true,
     role: true, // optional, only used for admin requests
-    secret_code: true // for admin verification
+    secret_code: true // for admin registration
   }).safeParse(input);
 
   if (!parsed.success) {
@@ -354,5 +355,7 @@ export const submitStep3 = async (input: unknown) => {
     client.release();
   }
 };
+
+
 
 

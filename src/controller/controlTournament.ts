@@ -1,6 +1,7 @@
 import {Request, Response} from "express";
 import { createTournament, getAllTournaments, getTournamentById, updateTournament, deleteTournament } from "../modules/tournaments/tournament";
 
+
 export const controlCreateTournament = async (req: Request, res: Response) => {
     try {
         const result = await createTournament(req.body);
@@ -37,8 +38,13 @@ export const controlGetAllTournaments = async (req: Request, res: Response) => {
 export const controlGetTournamentById = async (req: Request, res: Response) => {
     try {
         const tournament = await getTournamentById(req.params.id);
+
+        if(!tournament.success){
+            return res.status(400).json(tournament);
+        }
         res.status(200).json({
             success: true,
+            message: "Tournament retrieved successfully",
             data: tournament
         });
     } catch (error: any) {

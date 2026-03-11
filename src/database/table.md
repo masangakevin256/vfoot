@@ -243,6 +243,7 @@ CREATE TABLE system_settings (
 ```sql
 CREATE TABLE tournaments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    league_id UUID REFERENCES leagues(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     type VARCHAR(50) NOT NULL,         -- e.g. 'Campus', 'National'
     campus_id UUID REFERENCES campuses(id),  -- optional, only for campus-level tournaments
@@ -276,17 +277,74 @@ CREATE TABLE fixtures (
 ```sql
 CREATE TABLE leagues (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,              -- e.g. "Year 1 League", "Z-League"
-    category VARCHAR(50) NOT NULL,           -- e.g. "Student", "Community"
-    status VARCHAR(50) DEFAULT 'ongoing',    -- e.g. 'upcoming', 'ongoing', 'completed'
-    total_players INT DEFAULT 0,             -- number of players in this league
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    title VARCHAR(255) NOT NULL,
+    campus_id UUID REFERENCES campuses(id) ON DELETE CASCADE,
+    category VARCHAR(50), -- Y1, Y2, Y3, Y4, Z-League
+    season INT,
+    year INT,
+    max_players INT DEFAULT 16,
+    status VARCHAR(50) DEFAULT 'REGISTRATION_OPEN',
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+```
+```sql
+CREATE TABLE league_players (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    league_id UUID REFERENCES leagues(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+
+    matches_played INT DEFAULT 0,
+    wins INT DEFAULT 0,
+    draws INT DEFAULT 0,
+    losses INT DEFAULT 0,
+
+    goals_for INT DEFAULT 0,
+    goals_against INT DEFAULT 0,
+
+    points INT DEFAULT 0,
+
+    joined_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE (league_id, user_id)
 );
 
 ```
 
+```sql
+CREATE TABLE league_fixtures (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    league_id UUID REFERENCES leagues(id) ON DELETE CASCADE,
+
+    player1_id UUID REFERENCES users(id),
+    player2_id UUID REFERENCES users(id),
+
+    round INT,
+    scheduled_at TIMESTAMP,
+
+    status VARCHAR(50) DEFAULT 'PENDING',
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+```
+```sql
+CREATE TABLE league_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fixture_id UUID REFERENCES league_fixtures(id) ON DELETE CASCADE,
+
+    player1_score INT,
+    player2_score INT,
+
+    submitted_by UUID REFERENCES users(id),
+
+    verified BOOLEAN DEFAULT false,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+ ```
 ## 12. INDEXES (Performance Optimization)
 
 ```sql
@@ -296,4 +354,6 @@ CREATE INDEX idx_payments_user ON payments(user_id);
 CREATE INDEX idx_kyc_user ON kyc_submissions(user_id);
 CREATE INDEX idx_registration_profiles_user ON registration_profiles(user_id);
 CREATE INDEX idx_campuses_county ON campuses(county_code);
+CREATE INDEX idx_league_players_league
+ON league_players(league_id);
 ```
